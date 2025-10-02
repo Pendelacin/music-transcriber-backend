@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+downloads/
+outputs/
+*.mp3
+*.mid
+*.midi
+*.pdf
+*.musicxml
+.DS_Store
+*.log
