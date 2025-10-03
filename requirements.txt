@@ -4,7 +4,6 @@ yt-dlp
 librosa==0.10.1
 basic-pitch
 music21
-tensorflow==2.20.0
-numpy==1.24.3
+tensorflow==2.15.0
 scipy==1.11.4
 gunicorn==21.2.0
