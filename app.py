@@ -21,6 +21,75 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'service': 'Music Transcriber API'})
 
+    @app.route('/transcribe-upload', methods=['POST'])
+def transcribe_upload():
+    """Transcribe from uploaded audio file"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Generate unique job ID
+        job_id = str(uuid.uuid4())[:8]
+        
+        # Save uploaded file
+        audio_file = os.path.join('downloads', f"{job_id}_{file.filename}")
+        file.save(audio_file)
+        
+        print(f"[{job_id}] Processing uploaded file: {file.filename}")
+        
+        # Convert to MIDI
+        print(f"[{job_id}] Converting audio to MIDI")
+        midi_result = audio_converter.convert(audio_file)
+        
+        if not midi_result['success']:
+            os.remove(audio_file)
+            return jsonify({'error': midi_result['error']}), 500
+        
+        midi_file = midi_result['midi_file']
+        
+        # Refine MIDI
+        print(f"[{job_id}] Refining MIDI with AI")
+        refine_result = midi_refiner.refine(midi_file)
+        
+        if not refine_result['success']:
+            os.remove(audio_file)
+            return jsonify({'error': refine_result['error']}), 500
+        
+        refined_midi = refine_result['refined_file']
+        
+        # Generate sheet music
+        print(f"[{job_id}] Generating sheet music")
+        sheet_result = sheet_generator.generate(refined_midi, title=file.filename)
+        
+        if not sheet_result['success']:
+            os.remove(audio_file)
+            return jsonify({'error': sheet_result['error']}), 500
+        
+        # Cleanup
+        os.remove(audio_file)
+        
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'title': file.filename,
+            'key': refine_result.get('key', 'Unknown'),
+            'time_signature': refine_result.get('time_signature', '4/4'),
+            'num_notes': midi_result.get('num_notes', 0),
+            'files': {
+                'midi': f'/download/midi/{job_id}',
+                'pdf': f'/download/pdf/{job_id}',
+                'xml': f'/download/xml/{job_id}'
+            }
+        })
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     """Main transcription endpoint"""
